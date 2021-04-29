@@ -22,28 +22,54 @@
 
 package ser10j;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
+import java.nio.ByteBuffer;
+
+import one.microstream.persistence.binary.types.Binary;
+import one.microstream.persistence.binary.types.ChunksWrapper;
+import serial.MicroStreamSerializer;
 
 public enum EnumSingleton {
   INSTANCE;
   private int value;
   public int getValue() {
-    return value;
+    return this.value;
   }
-  public void setValue(int value) {
+  public void setValue(final int value) {
     this.value = value;
   }
-
-  @SuppressWarnings("SameParameterValue")
-  private static void serialize(Object o) throws IOException {
-    try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("tempdata.ser"))) {
-      oos.writeObject(o);
+  
+  private static MicroStreamSerializer serializer;
+  static
+  {
+	  serializer = MicroStreamSerializer.New();
+	  serializer.serialize(EnumSingleton.INSTANCE);
+  }
+  
+  private static void serialize(final Object o) throws IOException {
+    final Binary data = serializer.serialize(o);
+    try(FileOutputStream fout = new FileOutputStream("tempdata.ser"))
+    {
+    	fout.getChannel().write(data.buffers());
     }
   }
+  
+  public static EnumSingleton deserialize() throws IOException, ClassNotFoundException
+  {
+	  final File file = new File("tempdata.ser");
+	  final ByteBuffer buffer = ByteBuffer.allocateDirect((int)file.length());
+	  try(FileInputStream fin = new FileInputStream(file))
+	  {
+		  fin.getChannel().read(buffer);
+		  buffer.rewind();
+	  }
+	  return (EnumSingleton)serializer.deserialize(ChunksWrapper.New(buffer));
+  }
 
-  public static void main(String[] args) throws IOException {
+  public static void main(final String[] args) throws IOException {
     EnumSingleton.INSTANCE.setValue(42);
     System.out.println("EnumSingleton.INSTANCE = " + EnumSingleton.INSTANCE.getValue());
     serialize(EnumSingleton.INSTANCE);

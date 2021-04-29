@@ -22,20 +22,16 @@
 
 package ser10j;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 
 public class DeserializeSingleton {
 
-  public static void main(String[] args) throws ClassNotFoundException, IOException {
+  public static void main(final String[] args) throws ClassNotFoundException, IOException {
     Singleton.INSTANCE.setValue(21);
     System.out.println("Singleton.INSTANCE = " + Singleton.INSTANCE.getValue());
-    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("tempdata.ser"))) {
-      Singleton one = (Singleton) ois.readObject();
-      System.out.println("EnumSingleton.INSTANCE == one is " + (Singleton.INSTANCE == one));
-      System.out.println("one = " + one.getValue());
-      System.out.println("Singleton.INSTANCE = " + Singleton.INSTANCE.getValue());
-    }
+    final Singleton one = Singleton.deserialize();
+    System.out.println("EnumSingleton.INSTANCE == one is " + (Singleton.INSTANCE == one));
+    System.out.println("one = " + one.getValue());
+    System.out.println("Singleton.INSTANCE = " + Singleton.INSTANCE.getValue());
   }
 }

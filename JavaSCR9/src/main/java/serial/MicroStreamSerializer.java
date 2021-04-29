@@ -1,10 +1,8 @@
 package serial;
 
+import static one.microstream.X.notNull;
+
 import java.io.Closeable;
-import java.lang.reflect.Field;
-import java.util.WeakHashMap;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
 
 import one.microstream.X;
 import one.microstream.collections.types.XGettingCollection;
@@ -18,9 +16,6 @@ import one.microstream.persistence.types.PersistenceManager;
 import one.microstream.persistence.types.PersistenceSource;
 import one.microstream.persistence.types.PersistenceTarget;
 import one.microstream.persistence.types.PersistenceTypeDictionaryManager;
-import one.microstream.persistence.types.PersistenceTypeHandlerManager;
-import one.microstream.reflect.XReflect;
-import one.microstream.util.traversing.ObjectGraphTraverser;
 
 
 public interface MicroStreamSerializer extends Closeable
@@ -32,54 +27,35 @@ public interface MicroStreamSerializer extends Closeable
 	@Override
 	public void close();
 	
-	public static MicroStreamSerializer get(final ClassLoader classLoader)
+	
+	public static MicroStreamSerializer New()
 	{
-		return Static.get(classLoader, XReflect::isNotTransient);
+		return new MicroStreamSerializer.Default(BinaryPersistence.Foundation());
 	}
 	
-	public static MicroStreamSerializer get(final ClassLoader classLoader, final Predicate<? super Field> fieldPredicate)
+	public static MicroStreamSerializer New(final BinaryPersistenceFoundation<?> foundation)
 	{
-		return Static.get(classLoader, fieldPredicate);
+		return new MicroStreamSerializer.Default(notNull(foundation));
 	}
 	
-	public static class Static
-	{
-		private final static WeakHashMap<ClassLoader, MicroStreamSerializer> cache = new WeakHashMap<>();
-				
-		static synchronized MicroStreamSerializer get(final ClassLoader classLoader, final Predicate<? super Field> fieldPredicate)
-		{
-			return cache.computeIfAbsent(
-				classLoader,
-				cl -> new MicroStreamSerializer.Default(fieldPredicate)
-			);
-		}
-		
-		private Static()
-		{
-			throw new Error();
-		}
-	}
 	
 	public static class Default implements MicroStreamSerializer
 	{
-		private final Predicate<? super Field> fieldPredicate;
-		private PersistenceManager<Binary>     persistenceManager;
-		private ObjectGraphTraverser           typeHandlerEnsurer;
-		private Binary                         input;
-		private Binary                         output;
+		private final BinaryPersistenceFoundation<?> foundation        ;
+		private PersistenceManager<Binary>           persistenceManager;
+		private Binary                               input             ;
+		private Binary                               output            ;
 		
-		Default(final Predicate<? super Field> fieldPredicate)
+		Default(final BinaryPersistenceFoundation<?> foundation)
 		{
 			super();
-			
-			this.fieldPredicate = fieldPredicate;
+			this.foundation = foundation;
 		}
 		
 		@Override
 		public synchronized Binary serialize(final Object object)
 		{
 			this.lazyInit();
-			this.typeHandlerEnsurer.traverse(object);
 			this.persistenceManager.store(object);
 			return this.output;
 		}
@@ -102,7 +78,6 @@ public interface MicroStreamSerializer extends Closeable
 				this.persistenceManager = null;
 				this.input              = null;
 				this.output             = null;
-				this.typeHandlerEnsurer = null;
 			}
 		}
 		
@@ -113,12 +88,11 @@ public interface MicroStreamSerializer extends Closeable
 				final PersistenceSourceBinary source = ()   -> X.Constant(this.input);
 				final PersistenceTargetBinary target = data -> this.output = data;
 				
-				final BinaryPersistenceFoundation<?> foundation = BinaryPersistence.Foundation()
+				final BinaryPersistenceFoundation<?> foundation = this.foundation
 					.setPersistenceSource(source)
 					.setPersistenceTarget(target)
-					.setContextDispatcher(
-						PersistenceContextDispatcher.LocalObjectRegistration()
-					);
+					.setContextDispatcher(PersistenceContextDispatcher.LocalObjectRegistration())
+				;
 				
 				foundation.setTypeDictionaryManager(
 					PersistenceTypeDictionaryManager.Transient(
@@ -126,22 +100,9 @@ public interface MicroStreamSerializer extends Closeable
 					)
 				);
 				
-				final PersistenceTypeHandlerManager<Binary> typeHandlerManager = foundation.getTypeHandlerManager();
-				typeHandlerManager.initialize();
+				foundation.getTypeHandlerManager().initialize();
 				
 				this.persistenceManager = foundation.createPersistenceManager();
-				
-				final Consumer<Object> objectAcceptor = obj -> {
-					if(obj != null)
-					{
-						typeHandlerManager.ensureTypeHandler(obj);
-					}
-				};
-				this.typeHandlerEnsurer = ObjectGraphTraverser.Builder()
-					.modeFull()
-					.fieldPredicate(this.fieldPredicate)
-					.acceptorLogic(objectAcceptor)
-					.buildObjectGraphTraverser();
 			}
 			else
 			{

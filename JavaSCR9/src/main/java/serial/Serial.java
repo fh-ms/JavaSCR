@@ -28,7 +28,7 @@ import one.microstream.persistence.binary.types.Binary;
 
 public class Serial {
 	
-  private final static MicroStreamSerializer microStreamSerializer = MicroStreamSerializer.get(Serial.class.getClassLoader());
+  private final static MicroStreamSerializer microStreamSerializer = MicroStreamSerializer.New();
 	
   public static Binary serialize(final Object o) throws IOException {
 	  return microStreamSerializer.serialize(o);

@@ -22,10 +22,16 @@
 
 package ser10j;
 
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
-import java.io.ObjectOutputStream;
 import java.io.Serializable;
+import java.nio.ByteBuffer;
+
+import one.microstream.persistence.binary.types.Binary;
+import one.microstream.persistence.binary.types.ChunksWrapper;
+import serial.MicroStreamSerializer;
 
 public class Singleton implements Serializable {
   public static final Singleton INSTANCE = new Singleton();
@@ -33,22 +39,42 @@ public class Singleton implements Serializable {
 
   private Singleton() { }
 
-  @SuppressWarnings("SameParameterValue")
-  private static void serialize(Object o) throws IOException {
-    try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("tempdata.ser"))) {
-      oos.writeObject(o);
-    }
-  }
-
   public int getValue() {
     return this.value;
   }
 
-  public void setValue(int value) {
+  public void setValue(final int value) {
     this.value = value;
   }
+  
+  private static MicroStreamSerializer serializer;
+  static
+  {
+	  serializer = MicroStreamSerializer.New();
+	  serializer.serialize(Singleton.INSTANCE);
+  }
+  
+  private static void serialize(final Object o) throws IOException {
+    final Binary data = serializer.serialize(o);
+    try(FileOutputStream fout = new FileOutputStream("tempdata.ser"))
+    {
+    	fout.getChannel().write(data.buffers());
+    }
+  }
+  
+  public static Singleton deserialize() throws IOException, ClassNotFoundException
+  {
+	  final File file = new File("tempdata.ser");
+	  final ByteBuffer buffer = ByteBuffer.allocateDirect((int)file.length());
+	  try(FileInputStream fin = new FileInputStream(file))
+	  {
+		  fin.getChannel().read(buffer);
+		  buffer.rewind();
+	  }
+	  return (Singleton)serializer.deserialize(ChunksWrapper.New(buffer));
+  }
 
-  public static void main(String[] args) throws IOException {
+  public static void main(final String[] args) throws IOException {
     Singleton.INSTANCE.setValue(42);
     System.out.println("Singleton.INSTANCE = " + Singleton.INSTANCE.getValue());
     serialize(Singleton.INSTANCE);

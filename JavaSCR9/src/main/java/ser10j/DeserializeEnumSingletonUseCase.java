@@ -22,16 +22,12 @@
 
 package ser10j;
 
-import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 
 public class DeserializeEnumSingletonUseCase {
-     public static void main(String[] args) throws ClassNotFoundException, IOException {
-       try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("tempdata.ser"))) {
-        EnumSingleton one = (EnumSingleton) ois.readObject();
+     public static void main(final String[] args) throws ClassNotFoundException, IOException {
+    	final EnumSingleton one = EnumSingleton.deserialize();
         System.out.println("one = " + one.getValue());
         System.out.println("EnumSingleton.INSTANCE = " + EnumSingleton.INSTANCE.getValue());
-      }
     }
  }
