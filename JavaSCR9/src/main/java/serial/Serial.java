@@ -22,26 +22,19 @@
 
 package serial;
 
-import java.io.*;
+import java.io.IOException;
+
+import one.microstream.persistence.binary.types.Binary;
 
 public class Serial {
-  public static byte[] serialize(Object o) throws IOException {
-    try (ByteArrayOutputStream ba = new ByteArrayOutputStream(); ObjectOutputStream oos = new ObjectOutputStream(ba)) {
-      oos.writeObject(o);
-      return ba.toByteArray();
-    }
+	
+  private final static MicroStreamSerializer microStreamSerializer = MicroStreamSerializer.get(Serial.class.getClassLoader());
+	
+  public static Binary serialize(final Object o) throws IOException {
+	  return microStreamSerializer.serialize(o);
   }
 
-  public static Object deserialize(byte[] bytes) throws ClassNotFoundException, IOException {
-    return new ObjectInputStream(new ByteArrayInputStream(bytes)).readObject();
-  }
-
-  public static Object deserialize(byte[] buffer, ObjectInputFilter filter) throws IOException, ClassNotFoundException {
-    Object obj;
-    try (ObjectInputStream ois = new ObjectInputStream(new ByteArrayInputStream(buffer))) {
-      ois.setObjectInputFilter(filter);
-      obj = ois.readObject();
-    }
-    return obj;
+  public static Object deserialize(final Binary binary) throws ClassNotFoundException, IOException {
+    return microStreamSerializer.deserialize(binary);
   }
 }
